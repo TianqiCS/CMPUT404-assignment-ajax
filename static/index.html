@@ -27,7 +27,7 @@
     <script>
 
 const canvas = document.getElementById('c');
-const host = window.location.href;
+const host = window.location.host;
 const context = canvas.getContext("2d");
 const W = canvas.width  = window.innerWidth-6;
 const H = canvas.height = window.innerHeight-50;
@@ -137,7 +137,7 @@ function getPosition(e) {
 
 
 function addEntity(entity, data) {
-    const url = `${host}entity/${entity}`;
+    const url = `http://${host}/entity/${entity}`;
     data = prepEntity(data);
     sendJSONXMLHTTPRequest(url, data, drawNextFrame)
     //world[entity] = data;
@@ -267,7 +267,7 @@ mouse.mousedraggers.push(entityFactory({colour:"green", radius: 10}));
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
-    const url = host + "world";
+    const url = `http://${host}/world`;
     const xhr = new XMLHttpRequest();
     xhr.open("GET", url);
     xhr.send();
