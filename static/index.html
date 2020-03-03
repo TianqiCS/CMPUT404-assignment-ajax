@@ -6,7 +6,7 @@
     <meta content='width=device-width; height=device-height; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;' name='viewport' />
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
-        Copyright 2013 Abram Hindle
+        Copyright 2013 Abram Hindle, Tianqi Wang
         
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
@@ -25,22 +25,26 @@
   <body bgcolor="black" height="100%" width="100%"> 
     <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
     <script>
-var canvas = document.getElementById('c');
-var host = window.location.host;
-var context = canvas.getContext("2d");
-var W = canvas.width  = window.innerWidth-6;
-var H = canvas.height = window.innerHeight-50;
+
+const canvas = document.getElementById('c');
+const host = window.location.href;
+const context = canvas.getContext("2d");
+const W = canvas.width  = window.innerWidth-6;
+const H = canvas.height = window.innerHeight-50;
 
 
 function sendJSONXMLHTTPRequest(url, objects, callback) {
-    var xhr = new XMLHttpRequest();
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhr.send(JSON.stringify(objects));
     xhr.onreadystatechange = function () {
-        if (xhr.readyState==4) {
+        if (xhr.readyState===4) {
             try {
-                if (xhr.status==200) {
-                    //XXX: parse some JSON from the request!
-                    //XXX: Pass the data to the callback!
+                if (xhr.status===200) {
+                    callback(JSON.parse(this.responseText));
                 }
+
             } 
             catch(e) {
                 alert('Error: ' + e.name);
@@ -57,17 +61,16 @@ world = {};
 
 //XXX: TODO Make this prettier!
 function drawCircle(context,entity) {
-    with(context) {
-        beginPath();              
-        lineWidth = 3;
-        var x = entity["x"];
-        var y = entity["y"];
-        //moveTo(x,y);
-        fillStyle = entity["colour"];
-        strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
-    }
+    const x = entity["x"];
+    const y = entity["y"];
+    const colour = entity["colour"];
+    const radius = entity["radius"] ? entity["radius"] : 50;
+
+    context.beginPath();
+    context.lineWidth = 3;
+    context.strokeStyle = context.fillStyle = colour;
+    context.arc(x, y, radius, 0, 2.0 * Math.PI, false);
+    context.stroke();
 }
 
 function prepEntity(entity) {
@@ -81,24 +84,21 @@ function prepEntity(entity) {
 }
 
 function clearFrame() {
-    with(context) {
-	moveTo(0,0);
-	fillStyle = "#000";
-	fillRect(0,0,W,H);
-    }
-
+    context.moveTo(0,0);
+    context.fillStyle = "#000";
+    context.fillRect(0,0,W,H);
 }
 
 // This actually draws the frame
 function renderFrame() {
     clearFrame();
-    for (var key in world) {
-        var entity = world[key];
-        drawCircle(context,prepEntity(entity));
-    }
+
+    Object.values(world).forEach(
+        (entity) => drawCircle(context, prepEntity(entity))
+    );
 }
 
-var drawNext = true;
+let drawNext = true;
 
 // Signals that there's something to be drawn
 function drawNextFrame() {
@@ -118,33 +118,39 @@ function drawFrame() {
 // So use this code, it works well on multitouch devices as well.
 
 function getPosition(e) {
-	if ( e.targetTouches && e.targetTouches.length > 0) {
-		var touch = e.targetTouches[0];
-		var x = touch.pageX  - canvas.offsetLeft;
-		var y = touch.pageY  - canvas.offsetTop;
+	let y;
+    let x;
+    if ( e.targetTouches && e.targetTouches.length > 0) {
+        const touch = e.targetTouches[0];
+        x = touch.pageX  - canvas.offsetLeft;
+		y = touch.pageY  - canvas.offsetTop;
 		return [x,y];
 	} else {
-		var rect = e.target.getBoundingClientRect();
-		var x = e.offsetX || e.pageX - rect.left - window.scrollX;
-		var y = e.offsetY || e.pageY - rect.top  - window.scrollY;
-		var x = e.pageX  - canvas.offsetLeft;
-		var y = e.pageY  - canvas.offsetTop;
+        const rect = e.target.getBoundingClientRect();
+        x = e.offsetX || e.pageX - rect.left - window.scrollX;
+        y = e.offsetY || e.pageY - rect.top - window.scrollY;
+        x = e.pageX  - canvas.offsetLeft;
+		y = e.pageY  - canvas.offsetTop;
 		return [x,y];
 	}
 }
 
 
 function addEntity(entity, data) {
-    world[entity] = data;
-    drawNextFrame(); // (but should we?)
+    const url = `${host}entity/${entity}`;
+    data = prepEntity(data);
+    sendJSONXMLHTTPRequest(url, data, drawNextFrame)
+    //world[entity] = data;
+    // drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
 
 }
 
-var counter = 0;
+let counter = 0;
+
 function addEntityWithoutName(data) {
     //var name = "X"+Math.floor((Math.random()*100)+1);
-    var name = "X"+(counter++)%100;
+    const name = "X" + (counter++) % 100;
     addEntity(name,data);
 }
 
@@ -155,7 +161,7 @@ mouse = (function() {
     // Now this isn't the most popular way of doing OO in 
     // Javascript, but it relies on lexical scope and I like it
     // This isn't 301 so I'm not totally bound to OO :)
-    var self;    
+    var self;
     self = {
         clicked: 0,
         // these are listener lists append to them
@@ -246,23 +252,38 @@ mouse = (function() {
 
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
-mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
-});
+function entityFactory(params) {
+    return (x,y,clicked,e) => {
+        addEntityWithoutName({'x':x,'y':y, ...params});
+    }
+}
 
-mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
-});
+mouse.mousedowners.push(entityFactory({colour:"blue"}));
 
-mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
-});
+mouse.mouseuppers.push(entityFactory({colour:"red"}));
+
+mouse.mousedraggers.push(entityFactory({colour:"green", radius: 10}));
 
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
-    drawFrame();
+    const url = host + "world";
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.send();
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState===4) {
+            try {
+                if (xhr.status===200) {
+                    world = JSON.parse(this.responseText);
+                }
+            }
+            catch(e) {
+                alert('Error: ' + e.name);
+            }
+        }
+    };
+    renderFrame();
 }
 
 // 30 frames per second
