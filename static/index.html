@@ -71,6 +71,8 @@ function drawCircle(context,entity) {
     context.strokeStyle = context.fillStyle = colour;
     context.arc(x, y, radius, 0, 2.0 * Math.PI, false);
     context.stroke();
+    context.shadowBlur = 25;
+    context.shadowColor = "white";
 }
 
 function prepEntity(entity) {
