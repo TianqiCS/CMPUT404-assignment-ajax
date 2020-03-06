@@ -20,7 +20,7 @@
         See the License for the specific language governing permissions and
         limitations under the License.
     "/>
-    <script src="json2.js"></script>
+    <!-- <script src="json2.js"></script> -->
   </head> 
   <body bgcolor="black" height="100%" width="100%"> 
     <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
@@ -65,10 +65,11 @@ function drawCircle(context,entity) {
     const y = entity["y"];
     const colour = entity["colour"];
     const radius = entity["radius"] ? entity["radius"] : 50;
+    const fill = entity["fill"]
 
     context.beginPath();
-    context.lineWidth = 3;
-    context.strokeStyle = context.fillStyle = colour;
+    context.lineWidth = 10;
+    context.strokeStyle = colour;
     context.arc(x, y, radius, 0, 2.0 * Math.PI, false);
     context.stroke();
     context.shadowBlur = 25;
@@ -87,7 +88,7 @@ function prepEntity(entity) {
 
 function clearFrame() {
     context.moveTo(0,0);
-    context.fillStyle = "#000";
+    context.fillStyle = "#33beff";
     context.fillRect(0,0,W,H);
 }
 
@@ -260,11 +261,11 @@ function entityFactory(params) {
     }
 }
 
-mouse.mousedowners.push(entityFactory({colour:"blue"}));
+mouse.mousedowners.push(entityFactory({colour:"#90ff33", radius: 15}));
 
-mouse.mouseuppers.push(entityFactory({colour:"red"}));
+mouse.mouseuppers.push(entityFactory({colour:"#6433ff", radius: 15}));
 
-mouse.mousedraggers.push(entityFactory({colour:"green", radius: 10}));
+mouse.mousedraggers.push(entityFactory({colour:"#DAF7A6", radius: 5}));
 
 
 function update() {

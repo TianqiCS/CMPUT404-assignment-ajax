@@ -12,4 +12,6 @@ Contributors / Licensing
 
 Generally everything is LICENSE'D under the Apache 2 license by Abram Hindle.
 
+New changes are authored by Tianqi Wang
+
 
